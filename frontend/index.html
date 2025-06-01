@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Journal Sentiment Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📝 Daily Journal Sentiment Tracker</h1>
+            <p>Track your daily mood through journal entries</p>
+        </header>
+
+        <!-- Stats Dashboard -->
+        <div class="stats-container" id="statsContainer">
+            <div class="stat-card">
+                <h3>Total Entries</h3>
+                <span class="stat-number" id="totalEntries">0</span>
+            </div>
+            <div class="stat-card positive">
+                <h3>Positive</h3>
+                <span class="stat-number" id="positiveEntries">0</span>
+            </div>
+            <div class="stat-card negative">
+                <h3>Negative</h3>
+                <span class="stat-number" id="negativeEntries">0</span>
+            </div>
+            <div class="stat-card neutral">
+                <h3>Neutral</h3>
+                <span class="stat-number" id="neutralEntries">0</span>
+            </div>
+        </div>
+
+        <!-- Journal Entry Form -->
+        <div class="form-container">
+            <h2>✍️ Write Today's Entry</h2>
+            <form id="journalForm">
+                <div class="form-group">
+                    <label for="entryDate">Date:</label>
+                    <input type="date" id="entryDate" name="date" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="entryText">How was your day?</label>
+                    <textarea 
+                        id="entryText" 
+                        name="text" 
+                        placeholder="Write about your day, feelings, experiences... (minimum 5 characters)"
+                        rows="5"
+                        required
+                    ></textarea>
+                </div>
+                
+                <button type="submit" id="submitBtn" class="submit-btn">
+                    <span id="submitText">Analyze & Save Entry</span>
+                    <span id="loadingSpinner" class="spinner" style="display: none;">⏳</span>
+                </button>
+            </form>
+            
+            <!-- Result Display -->
+            <div id="resultContainer" class="result-container" style="display: none;">
+                <h3>📊 Sentiment Analysis Result</h3>
+                <div class="sentiment-result">
+                    <div class="sentiment-score">
+                        <span>Sentiment Score:</span>
+                        <span id="sentimentScore" class="score">0.0</span>
+                    </div>
+                    <div class="sentiment-label">
+                        <span>Mood:</span>
+                        <span id="sentimentLabel" class="label">Neutral</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="chart-container">
+            <h2>📈 Your Mood Trends</h2>
+            <div class="chart-wrapper">
+                <canvas id="moodChart"></canvas>
+            </div>
+            <div id="noDataMessage" class="no-data" style="display: none;">
+                <p>No entries yet. Write your first journal entry to see your mood trends!</p>
+            </div>
+        </div>
+
+        <!-- Recent Entries -->
+        <div class="entries-container">
+            <h2>📚 Recent Entries</h2>
+            <div id="entriesList" class="entries-list">
+                <div class="loading-entries">Loading entries...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div id="messageContainer" class="message-container"></div>
+
+    <!-- Chart.js CDN - Load before your script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.0/chart.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
