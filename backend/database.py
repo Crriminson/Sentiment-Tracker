@@ -2,8 +2,8 @@ import sqlite3
 from datetime import datetime
 import os
 
-# Database file path
-DB_PATH = 'journal_entries.db'
+# Database file path - FIXED to match app.py
+DB_PATH = 'journal.db'
 
 def init_database():
     """Initialize the database and create tables if they don't exist"""
@@ -11,15 +11,15 @@ def init_database():
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Create entries table
+        # Create entries table - FIXED column names to match app.py
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS entries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                text TEXT NOT NULL,
                 date TEXT NOT NULL,
-                sentiment_score REAL NOT NULL,
+                text TEXT NOT NULL,
+                sentiment REAL NOT NULL,
                 sentiment_label TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
@@ -39,9 +39,9 @@ def add_entry_to_db(text, date, sentiment_score, sentiment_label):
         created_at = datetime.now().isoformat()
         
         cursor.execute('''
-            INSERT INTO entries (text, date, sentiment_score, sentiment_label, created_at)
+            INSERT INTO entries (date, text, sentiment, sentiment_label, created_at)
             VALUES (?, ?, ?, ?, ?)
-        ''', (text, date, sentiment_score, sentiment_label, created_at))
+        ''', (date, text, sentiment_score, sentiment_label, created_at))
         
         # Get the ID of the newly inserted entry
         entry_id = cursor.lastrowid
@@ -54,7 +54,7 @@ def add_entry_to_db(text, date, sentiment_score, sentiment_label):
             'id': entry_id,
             'text': text,
             'date': date,
-            'sentiment_score': sentiment_score,
+            'sentiment': sentiment_score,
             'sentiment_label': sentiment_label,
             'created_at': created_at
         }
@@ -70,7 +70,7 @@ def get_all_entries():
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, text, date, sentiment_score, sentiment_label, created_at
+            SELECT id, date, text, sentiment, sentiment_label, created_at
             FROM entries
             ORDER BY created_at DESC
         ''')
@@ -83,9 +83,9 @@ def get_all_entries():
         for row in rows:
             entry = {
                 'id': row[0],
-                'text': row[1],
-                'date': row[2],
-                'sentiment_score': row[3],
+                'date': row[1],
+                'text': row[2],
+                'sentiment': row[3],
                 'sentiment_label': row[4],
                 'created_at': row[5]
             }

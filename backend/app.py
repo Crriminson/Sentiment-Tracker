@@ -6,7 +6,7 @@ from datetime import datetime
 from textblob import TextBlob
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5500", "http://127.0.0.1:5500"])
 
 # Database configuration
 DATABASE = 'journal.db'

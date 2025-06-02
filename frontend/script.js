@@ -5,7 +5,7 @@ const API_BASE_URL = 'http://localhost:5000';
 let entriesData = [];
 let moodChart = null;
 
-// DOM Elements - Updated to match your HTML IDs
+// DOM Elements
 const journalForm = document.getElementById('journalForm');
 const journalText = document.getElementById('entryText');
 const journalDate = document.getElementById('entryDate');
@@ -34,170 +34,202 @@ function debugLog(message, data = null) {
     }
 }
 
+// Test API connection
+async function testConnection() {
+    try {
+        debugLog('Testing backend connection...');
+        const response = await fetch(`${API_BASE_URL}/api/health`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        debugLog('✅ Backend connection successful', data);
+        return true;
+    } catch (error) {
+        console.error('❌ Backend connection failed:', error);
+        showMessage('Cannot connect to server. Make sure the Flask backend is running on port 5000.', 'error');
+        return false;
+    }
+}
+
 // Wait for Chart.js to load
 function waitForChart() {
-    return new Promise((resolve) => {
-        if (typeof Chart !== 'undefined') {
-            debugLog('Chart.js already loaded');
-            resolve();
-        } else {
-            debugLog('Waiting for Chart.js to load...');
-            // Check every 100ms for Chart to be available
-            const checkChart = setInterval(() => {
-                if (typeof Chart !== 'undefined') {
-                    clearInterval(checkChart);
-                    debugLog('Chart.js loaded successfully');
-                    resolve();
-                }
-            }, 100);
-        }
+    return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds timeout
+        
+        const checkChart = setInterval(() => {
+            attempts++;
+            if (typeof Chart !== 'undefined') {
+                clearInterval(checkChart);
+                debugLog('Chart.js loaded successfully');
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                clearInterval(checkChart);
+                console.error('Chart.js failed to load after 5 seconds');
+                reject(new Error('Chart.js failed to load'));
+            }
+        }, 100);
     });
 }
 
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', async function() {
-    debugLog('DOM loaded, initializing app...');
-    
-    // Check if all required elements exist
-    debugLog('Checking DOM elements...', {
-        journalForm: !!journalForm,
-        journalText: !!journalText,
-        journalDate: !!journalDate,
-        submitBtn: !!submitBtn
-    });
-    
-    if (!journalForm) {
-        console.error('ERROR: Journal form not found!');
-        return;
-    }
-    
-    if (!journalText) {
-        console.error('ERROR: Journal text area not found!');
-        return;
-    }
+    debugLog('🚀 DOM loaded, initializing Journal App...');
     
     try {
+        // Check if required elements exist
+        if (!journalForm) {
+            throw new Error('Journal form not found');
+        }
+        if (!journalText) {
+            throw new Error('Journal text input not found');
+        }
+        if (!journalDate) {
+            throw new Error('Journal date input not found');
+        }
+        
+        debugLog('✅ All required DOM elements found');
+        
+        // Test backend connection first
+        const isConnected = await testConnection();
+        if (!isConnected) {
+            return; // Don't continue if backend is not available
+        }
+        
         // Wait for Chart.js to be available
-        await waitForChart();
-        debugLog('Chart.js ready');
+        try {
+            await waitForChart();
+            debugLog('📊 Chart.js ready');
+        } catch (error) {
+            console.error('Chart.js loading failed:', error);
+            showMessage('Chart visualization unavailable', 'error');
+        }
         
         // Set default date to today
-        const today = new Date().toISOString().split('T')[0];
-        if (journalDate) {
-            journalDate.value = today;
-            debugLog('Default date set to:', today);
-        }
+        journalDate.value = new Date().toISOString().split('T')[0];
+        debugLog('📅 Default date set');
         
-        // Add form submit listener with proper error handling
-        if (journalForm) {
-            journalForm.addEventListener('submit', async function(event) {
-                debugLog('Form submit event triggered');
-                try {
-                    await handleFormSubmit(event);
-                } catch (error) {
-                    console.error('ERROR in form submit handler:', error);
-                    showMessage(`Form submission error: ${error.message}`, 'error');
-                }
-            });
-            debugLog('Form submit listener added');
-        }
+        // Add form submit listener with proper binding
+        journalForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            try {
+                await handleFormSubmit(event);
+            } catch (error) {
+                console.error('Form submission error:', error);
+                showMessage(`Form error: ${error.message}`, 'error');
+            }
+            
+            return false; // Ensure form doesn't submit
+        });
         
-        // Load existing entries and stats
-        debugLog('Loading initial data...');
-        await loadEntries();
-        await loadStats();
-        debugLog('App initialization complete');
+        debugLog('📝 Form event listener attached');
+        
+        // Load initial data
+        await loadInitialData();
+        
+        debugLog('🎉 App initialization complete');
         
     } catch (error) {
-        console.error('ERROR during app initialization:', error);
-        showMessage('Failed to initialize app', 'error');
+        console.error('❌ App initialization failed:', error);
+        showMessage(`Initialization error: ${error.message}`, 'error');
     }
 });
+
+// Load initial data
+async function loadInitialData() {
+    debugLog('📚 Loading initial data...');
+    
+    try {
+        // Load data in parallel
+        const [entriesResult, statsResult] = await Promise.allSettled([
+            loadEntries(),
+            loadStats()
+        ]);
+        
+        if (entriesResult.status === 'rejected') {
+            console.error('Failed to load entries:', entriesResult.reason);
+        }
+        
+        if (statsResult.status === 'rejected') {
+            console.error('Failed to load stats:', statsResult.reason);
+        }
+        
+        debugLog('✅ Initial data loading complete');
+        
+    } catch (error) {
+        console.error('❌ Failed to load initial data:', error);
+        showMessage('Failed to load data from server', 'error');
+    }
+}
 
 // Handle form submission
 async function handleFormSubmit(event) {
     debugLog('=== FORM SUBMIT HANDLER START ===');
     
-    // CRITICAL: Prevent form default submission
-    event.preventDefault();
-    event.stopPropagation();
-    
-    debugLog('Default form submission prevented');
-    
     try {
         const text = journalText.value.trim();
         const date = journalDate.value;
         
-        debugLog('Form data extracted', { text: text.substring(0, 50) + '...', date });
+        debugLog('Form data extracted', { 
+            textLength: text.length, 
+            textPreview: text.substring(0, 50) + '...', 
+            date 
+        });
         
         // Validation
         if (!text) {
-            debugLog('Validation failed: empty text');
             showMessage('Please enter some text for your journal entry.', 'error');
-            return false;
+            return;
         }
         
         if (text.length < 5) {
-            debugLog('Validation failed: text too short');
             showMessage('Please write at least 5 characters for better sentiment analysis.', 'error');
-            return false;
+            return;
         }
         
-        debugLog('Validation passed, calling saveEntry...');
+        if (!date) {
+            showMessage('Please select a date for your entry.', 'error');
+            return;
+        }
+        
+        debugLog('✅ Validation passed, saving entry...');
+        
+        // Save entry
         await saveEntry(text, date);
+        
         debugLog('=== FORM SUBMIT HANDLER COMPLETE ===');
-        return false; // Ensure no form submission
         
     } catch (error) {
         console.error('ERROR in handleFormSubmit:', error);
-        showMessage(`Form handling error: ${error.message}`, 'error');
-        return false;
+        showMessage(`Submission failed: ${error.message}`, 'error');
+        throw error;
     }
 }
 
 // Save new journal entry
 async function saveEntry(text, date) {
-    debugLog('=== SAVE ENTRY START ===');
+    debugLog('💾 Saving journal entry...');
     
     try {
-        // Show loading state immediately
         showLoading(true);
         hideResult();
         
-        const requestData = {
-            text: text,
-            date: date
-        };
+        const requestData = { text, date };
+        debugLog('Sending request to backend', requestData);
         
-        debugLog('Making API request', {
-            url: `${API_BASE_URL}/api/entries`,
-            method: 'POST',
-            data: requestData
-        });
-        
-        // Check if server is reachable first
-        let healthResponse;
-        try {
-            healthResponse = await fetch(`${API_BASE_URL}/api/health`);
-            debugLog('Health check response:', {
-                status: healthResponse.status,
-                ok: healthResponse.ok
-            });
-        } catch (healthError) {
-            debugLog('Health check failed:', healthError.message);
-            throw new Error('Cannot connect to server. Please make sure the Flask app is running on port 5000.');
-        }
-        
-        // Make the actual request
         const response = await fetch(`${API_BASE_URL}/api/entries`, {
             method: 'POST',
-            headers: {
+            headers: { 
                 'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(requestData)
         });
         
-        debugLog('API response received', {
+        debugLog('Backend response received', {
             status: response.status,
             ok: response.ok,
             statusText: response.statusText
@@ -205,32 +237,26 @@ async function saveEntry(text, date) {
         
         if (!response.ok) {
             const errorText = await response.text();
-            debugLog('API error response:', errorText);
-            throw new Error(`Server error: ${response.status} - ${errorText}`);
+            throw new Error(`Server error (${response.status}): ${errorText}`);
         }
         
         const newEntry = await response.json();
-        debugLog('New entry received from API:', newEntry);
+        debugLog('✅ Entry saved successfully', newEntry);
         
-        // Show success
+        // Show success feedback
         showMessage('Entry saved successfully! 🎉', 'success');
         showResult(newEntry);
         
         // Clear form
         journalText.value = '';
-        debugLog('Form cleared');
         
-        // Reload data
-        debugLog('Reloading data...');
-        await Promise.all([loadEntries(), loadStats()]);
-        debugLog('Data reload complete');
-        
-        debugLog('=== SAVE ENTRY COMPLETE ===');
+        // Reload all data to ensure consistency
+        await loadInitialData();
         
     } catch (error) {
-        console.error('=== SAVE ENTRY ERROR ===');
-        console.error('Error details:', error);
+        console.error('❌ Error saving entry:', error);
         showMessage(`Failed to save entry: ${error.message}`, 'error');
+        throw error;
     } finally {
         showLoading(false);
     }
@@ -238,33 +264,36 @@ async function saveEntry(text, date) {
 
 // Load entries from API
 async function loadEntries() {
-    debugLog('=== LOADING ENTRIES ===');
+    debugLog('📖 Loading entries from API...');
     
     try {
         const response = await fetch(`${API_BASE_URL}/api/entries`);
-        debugLog('Entries API response:', {
+        
+        debugLog('Entries API response', {
             status: response.status,
             ok: response.ok
         });
         
         if (!response.ok) {
-            throw new Error(`Failed to load entries: ${response.status}`);
+            throw new Error(`Failed to load entries: HTTP ${response.status}`);
         }
         
-        entriesData = await response.json();
-        debugLog('Entries loaded:', {
+        const data = await response.json();
+        entriesData = Array.isArray(data) ? data : [];
+        
+        debugLog('✅ Entries loaded', {
             count: entriesData.length,
             sample: entriesData.slice(0, 2)
         });
         
-        // Update UI
+        // Update UI components
         displayRecentEntries();
         updateChart();
-        debugLog('UI updated with new entries');
         
     } catch (error) {
-        console.error('ERROR loading entries:', error);
+        console.error('❌ Error loading entries:', error);
         
+        // Update UI to show error state
         if (entriesList) {
             entriesList.innerHTML = '<div class="no-entries">Unable to load entries. Please check if the server is running.</div>';
         }
@@ -272,38 +301,48 @@ async function loadEntries() {
         if (noDataMessage) {
             noDataMessage.style.display = 'block';
         }
+        
+        throw error;
     }
 }
 
 // Load statistics
 async function loadStats() {
-    debugLog('=== LOADING STATS ===');
+    debugLog('📊 Loading statistics from API...');
     
     try {
         const response = await fetch(`${API_BASE_URL}/api/stats`);
-        debugLog('Stats API response:', {
+        
+        debugLog('Stats API response', {
             status: response.status,
             ok: response.ok
         });
         
         if (!response.ok) {
-            throw new Error(`Failed to load stats: ${response.status}`);
+            throw new Error(`Failed to load stats: HTTP ${response.status}`);
         }
         
         const stats = await response.json();
-        debugLog('Stats loaded:', stats);
+        debugLog('✅ Stats loaded', stats);
         
         updateStats(stats);
         
     } catch (error) {
-        console.error('ERROR loading stats:', error);
-        // Fail silently for stats
+        console.error('❌ Error loading stats:', error);
+        // Set default stats
+        updateStats({
+            total_entries: 0,
+            positive_count: 0,
+            negative_count: 0,
+            neutral_count: 0
+        });
+        throw error;
     }
 }
 
 // Update statistics display
 function updateStats(stats) {
-    debugLog('Updating stats display:', stats);
+    debugLog('📈 Updating stats display', stats);
     
     if (totalEntries) totalEntries.textContent = stats.total_entries || 0;
     if (positiveEntries) positiveEntries.textContent = stats.positive_count || 0;
@@ -313,10 +352,10 @@ function updateStats(stats) {
 
 // Display recent entries
 function displayRecentEntries() {
-    debugLog('Displaying recent entries:', entriesData.length);
+    debugLog('📋 Displaying recent entries', { count: entriesData.length });
     
     if (!entriesList) {
-        debugLog('Entries list element not found');
+        debugLog('❌ Entries list element not found');
         return;
     }
     
@@ -346,76 +385,89 @@ function displayRecentEntries() {
         `;
     }).join('');
     
-    debugLog('Recent entries displayed');
+    debugLog('✅ Recent entries displayed');
 }
 
 // Update sentiment chart
+// Update sentiment chart (simplified version without time scale)
 function updateChart() {
-    debugLog('Updating chart...');
+    debugLog('📊 Updating chart...');
     
     if (!chartCanvas) {
-        debugLog('Chart canvas not found');
+        debugLog('❌ Chart canvas element not found');
         return;
     }
     
     if (typeof Chart === 'undefined') {
-        debugLog('Chart.js not available, retrying...');
-        setTimeout(updateChart, 500);
+        debugLog('❌ Chart.js not available');
+        if (noDataMessage) noDataMessage.style.display = 'block';
         return;
     }
     
     if (!entriesData || entriesData.length === 0) {
-        debugLog('No data for chart');
+        debugLog('ℹ️ No data for chart');
         if (noDataMessage) noDataMessage.style.display = 'block';
+        if (moodChart) {
+            moodChart.destroy();
+            moodChart = null;
+        }
         return;
     }
     
     if (noDataMessage) noDataMessage.style.display = 'none';
     
-    // Prepare chart data
-    const chartData = entriesData
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
-        .map(entry => ({
-            x: entry.date,
-            y: entry.sentiment
-        }));
+    // Prepare chart data - sort by date
+    const sortedEntries = entriesData.sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    debugLog('Chart data prepared:', chartData);
+    const labels = sortedEntries.map(entry => {
+        const date = new Date(entry.date);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
     
-    // Destroy existing chart
+    const sentimentData = sortedEntries.map(entry => entry.sentiment || 0);
+    
+    debugLog('Chart data prepared', { points: sentimentData.length, labels, sentimentData });
+    
+    // Destroy existing chart if it exists
     if (moodChart) {
         moodChart.destroy();
+        moodChart = null;
     }
     
     try {
-        const ctx = chartCanvas.getContext('2d');
-        moodChart = new Chart(ctx, {
+        // Create new chart with simplified configuration
+        moodChart = new Chart(chartCanvas.getContext('2d'), {
             type: 'line',
             data: {
+                labels: labels,
                 datasets: [{
                     label: 'Sentiment Score',
-                    data: chartData,
+                    data: sentimentData,
                     borderColor: '#4F46E5',
                     backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                    borderWidth: 3,
                     fill: true,
-                    tension: 0.4,
+                    tension: 0.2,
                     pointBackgroundColor: '#4F46E5',
                     pointBorderColor: '#ffffff',
                     pointBorderWidth: 2,
-                    pointRadius: 6
+                    pointRadius: 5
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
                 scales: {
                     x: {
-                        type: 'category',
+                        // Remove time scale - use category scale (default)
                         title: {
                             display: true,
-                            text: 'Date',
-                            font: { size: 14, weight: 'bold' }
+                            text: 'Date'
                         }
                     },
                     y: {
@@ -423,27 +475,31 @@ function updateChart() {
                         max: 1,
                         title: {
                             display: true,
-                            text: 'Sentiment Score',
-                            font: { size: 14, weight: 'bold' }
+                            text: 'Sentiment Score'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                if (value > 0.1) return 'Positive';
+                                if (value < -0.1) return 'Negative';
+                                return 'Neutral';
+                            }
                         }
                     }
-                },
-                plugins: {
-                    legend: { display: false }
                 }
             }
         });
         
-        debugLog('Chart created successfully');
+        debugLog('✅ Chart created successfully');
         
     } catch (error) {
-        console.error('ERROR creating chart:', error);
+        console.error('❌ Error creating chart:', error);
+        if (noDataMessage) noDataMessage.style.display = 'block';
     }
 }
 
 // Show loading state
 function showLoading(show) {
-    debugLog('Setting loading state:', show);
+    debugLog('⏳ Setting loading state', { loading: show });
     
     if (submitBtn) submitBtn.disabled = show;
     if (submitText) submitText.style.display = show ? 'none' : 'inline';
@@ -452,7 +508,7 @@ function showLoading(show) {
 
 // Show analysis result
 function showResult(entry) {
-    debugLog('Showing result:', entry);
+    debugLog('✅ Showing analysis result', entry);
     
     if (!resultContainer) return;
     
@@ -478,7 +534,7 @@ function hideResult() {
 
 // Show success/error messages
 function showMessage(message, type) {
-    debugLog('Showing message:', { message, type });
+    debugLog('💬 Showing message', { message, type });
     
     if (!messageContainer) return;
     
@@ -496,13 +552,13 @@ function showMessage(message, type) {
     }, 5000);
 }
 
-// Add error handling for unhandled promise rejections
+// Error handling for unhandled promise rejections
 window.addEventListener('unhandledrejection', function(event) {
     console.error('Unhandled promise rejection:', event.reason);
     showMessage('An unexpected error occurred', 'error');
 });
 
-// Add error handling for general JavaScript errors
+// Error handling for general JavaScript errors
 window.addEventListener('error', function(event) {
     console.error('JavaScript error:', event.error || event.message);
     showMessage('A JavaScript error occurred', 'error');
