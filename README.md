@@ -1,74 +1,117 @@
-# Daily Journal Sentiment Tracker
+# 📔 Daily Journal Sentiment Tracker
 
-A web application that analyzes the emotional sentiment of your daily journal entries and visualizes your mood patterns over time.
+> A beautiful web application that analyzes the emotional sentiment of your daily journal entries and visualizes your mood patterns over time.
 
-## Features
+---
 
-- Daily journaling with automatic sentiment analysis
-- Interactive mood visualization charts
-- SQLite database for data persistence
-- Simple, clean interface
+## ✨ Features
 
-## Tech Stack
+- 📝 **Daily Journaling** - Write and save your thoughts
+- 🧠 **Smart Analysis** - Automatic sentiment detection using AI
+- 📊 **Mood Visualization** - Interactive charts showing your emotional journey
+- 💾 **Data Persistence** - All entries securely saved
+- 🎨 **Clean Interface** - Simple and intuitive design
 
-- **Backend**: Python, Flask, TextBlob, SQLite
-- **Frontend**: HTML/CSS/JavaScript, Chart.js
+---
 
-## Installation
+## 🛠️ Tech Stack
 
-1. **Clone and setup backend**
+| Frontend | Backend | Database | AI/ML |
+|----------|---------|----------|-------|
+| HTML/CSS/JS | Python Flask | SQLite | TextBlob NLP |
+| Chart.js | Flask-CORS | - | Sentiment Analysis |
+
+---
+
+## 🚀 Quick Start
+
+### 1️⃣ Clone & Setup
 ```bash
 git clone https://github.com/yourusername/sentiment-tracker.git
 cd sentiment-tracker/backend
+```
+
+### 2️⃣ Install Dependencies
+```bash
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 python -m textblob.download_corpora
 ```
 
-2. **Run the application**
+### 3️⃣ Launch Application
 ```bash
 python app.py
 ```
 
-3. **Open frontend**
-Open `frontend/index.html` in your browser or serve locally:
+### 4️⃣ Open Frontend
 ```bash
 cd ../frontend
 python -m http.server 3000
+# Visit: http://localhost:3000
 ```
 
-## API Endpoints
+---
 
-**POST /api/entries** - Add journal entry
+## 📡 API Reference
+
+### `POST /api/entries`
+**Add a new journal entry**
 ```json
 {
-  "text": "I feel great today!",
+  "text": "I feel amazing today! 😊",
   "date": "2024-01-01"
 }
 ```
 
-**GET /api/entries** - Get all entries with sentiment data
+### `GET /api/entries`
+**Retrieve all entries with sentiment analysis**
+```json
+{
+  "entries": [
+    {
+      "id": 1,
+      "text": "I feel amazing today! 😊",
+      "sentiment_score": 0.8,
+      "sentiment_label": "positive"
+    }
+  ]
+}
+```
 
-## Project Structure
+---
+
+## 📁 Project Structure
 
 ```
-sentiment-tracker/
-├── backend/
-│   ├── app.py
-│   ├── database.py
-│   └── requirements.txt
-└── frontend/
-    ├── index.html
-    ├── style.css
-    └── script.js
+📦 sentiment-tracker/
+├── 🔧 backend/
+│   ├── app.py              # Flask application
+│   ├── database.py         # Database operations
+│   └── requirements.txt    # Python dependencies
+└── 🎨 frontend/
+    ├── index.html         # Main interface
+    ├── style.css          # Styling
+    └── script.js          # Frontend logic
 ```
 
-## Dependencies
+---
 
-```
+## 📦 Dependencies
+
+```txt
 flask
 textblob
 flask-cors
 gunicorn
 ```
+
+---
+
+<div align="center">
+
+**Made with ❤️ for tracking your emotional journey**
+
+⭐ Star this repo if you found it helpful!
+
+</div>
